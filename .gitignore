@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+
+# Logs
+*.log
+
+# Audio / capture generated
+recordings/*.wav
+recordings/*.mp3
+recordings/*.pcap
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# Test / cache
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local misc
+*.bak
+*.tmp

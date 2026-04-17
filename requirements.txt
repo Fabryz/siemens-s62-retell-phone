@@ -1,0 +1,3 @@
+retell-sdk
+python-dotenv
+RPi.GPIO

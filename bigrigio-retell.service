@@ -1,0 +1,15 @@
+[Unit]
+Description=Bigrigio Retell Phone
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bigrigio
+WorkingDirectory=/home/bigrigio/telefono/repo
+ExecStart=/usr/bin/python3 /home/bigrigio/telefono/repo/retell_hook.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
