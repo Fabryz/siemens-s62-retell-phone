@@ -1,75 +1,157 @@
-# Bigrigio Raspberry Phone
+# Siemens S62 Retell Phone
 
-A Raspberry Pi based retro phone project that uses a **Siemens S62 handset** as a physical endpoint for an AI voice agent.
+![Siemens S62 "Bigrigio"](bigrigio.jpg)
 
-This repository is built specifically around a **Raspberry Pi Zero 2 W**.
+A retro AI phone built around a **Raspberry Pi Zero 2 W** and a restored **Siemens S62** handset/body.
 
-The Raspberry Pi handles:
+The idea behind this project is simple: take a classic physical telephone, keep the tactile and mechanical charm of the original object, and connect it to a modern AI voice workflow.
 
-- hook switch detection
-- audio playback through a DAC / speaker path
-- SIP calling through `pjsua`
-- Retell call registration
-- optional call recording
-- systemd autostart for the handset service
+This particular phone was picked up at an antiques / flea market and turned into an experiment in blending **physical, analog interaction** with **digital voice AI**.
 
-This repository is designed around a Raspberry Pi setup where:
+For people outside Italy: the **Siemens S62**, commonly nicknamed **"Bigrigio"**, is one of the most recognizable Italian desk telephones of the late SIP era. The model was introduced in **1962**, was designed by **Lino Saltini**, and became the standard rented telephone supplied by **SIP** across Italy for many years. The nickname "Bigrigio" comes from its characteristic two-tone gray color scheme. Later, newer models such as **Pulsar** gradually replaced it, but the S62 remained iconic. 
 
-- the **handset hook** is connected to a GPIO pin
-- audio playback goes to a **HiFiBerry DAC**
-- microphone input may be missing, in which case an **ALSA loopback** device can be used as a fake capture device
-- SIP calls are placed with a locally compiled `pjsua`
+This repository documents the Raspberry Pi side of that build: hook detection, audio routing, SIP calling with `pjsua`, and Retell integration.
 
-For Retell custom telephony / SIP integration reference, see:
+Retell custom telephony reference:
 
 - https://docs.retellai.com/deploy/custom-telephony
 
 ---
 
-## Hardware overview
+## What this project does
 
-Main components:
+The Raspberry Pi:
 
-- Raspberry Pi Zero 2 W
-- Siemens S62 handset / phone body
-- HiFiBerry DAC (or compatible ALSA playback device)
-- handset hook switch connected to GPIO
-- optional microphone, or ALSA loopback if no real microphone is available
+- monitors the phone hook switch through GPIO
+- starts a Retell SIP call when the handset is lifted
+- closes the call when the handset is placed back down
+- routes audio through ALSA
+- can record local WAV files for debugging
+- can run automatically on boot with `systemd`
+
+At the current stage, the project already supports **live AI phone calls** through Retell and `pjsua`.
 
 ---
 
-## Project structure
+## Hardware used
 
-Example layout:
+This repository is built specifically around:
+
+- **Raspberry Pi Zero 2 W**
+- **Siemens S62** desk telephone
+- **INMP441** I2S MEMS microphone, used instead of the original carbon microphone capsule
+- **MAX98357A** I2S DAC / amplifier, used to drive the handset speaker from the Raspberry Pi
+- handset hook switch connected to GPIO
+- original handset speaker wired through the amplifier path
+
+### Why these modules are used
+
+- The **INMP441** is used because it is much easier and cleaner to interface with the Raspberry Pi than the original carbon microphone.
+- The **MAX98357A** is used to convert Raspberry Pi digital audio into a signal suitable for the telephone speaker.
+
+### Audio device note
+
+Depending on the exact hardware wiring and overlays used on your Raspberry Pi, the ALSA device exposed by the system may vary.
+
+In the current working setup documented here, the project uses the ALSA device exposed as:
+
+- `sndrpigooglevoi`
+
+## Wiring notes
+
+The exact wiring can vary depending on how the phone has been restored, but this project currently assumes a Raspberry Pi I2S audio setup plus a GPIO hook switch.
+
+### Hook switch
+
+- Hook switch → `GPIO17` (**physical pin 11**)
+- Logic used in software:
+  - `LOW` = handset lifted
+  - `HIGH` = handset down
+
+### I2S audio bus
+
+The Raspberry Pi PCM / I2S audio bus uses the usual GPIO group:
+
+- `GPIO18` (**physical pin 12**) → I2S bit clock / BCLK
+- `GPIO19` (**physical pin 35**) → I2S word select / LRCLK / WS
+- `GPIO20` (**physical pin 38**) → I2S data into Raspberry Pi
+- `GPIO21` (**physical pin 40**) → I2S data out from Raspberry Pi
+
+### INMP441 microphone
+
+Typical connection:
+
+- `VDD` → **3.3V** (**physical pin 1** or **17**)
+- `GND` → any ground pin
+- `SCK` → `GPIO18` (**pin 12**)
+- `WS` / `LRCL` → `GPIO19` (**pin 35**)
+- `SD` → `GPIO20` (**pin 38**)
+
+### MAX98357A amplifier
+
+Typical connection:
+
+- `VIN` → **5V** (**physical pin 2** or **4**)
+- `GND` → any ground pin
+- `BCLK` → `GPIO18` (**pin 12**)
+- `LRC` / `LRCLK` → `GPIO19` (**pin 35**)
+- `DIN` → `GPIO21` (**pin 40**)
+
+The speaker inside the Siemens S62 is then connected to the amplifier output.
+
+### Important note
+
+The exact power pins and speaker wiring should always be verified against your real hardware build before copying them into another project.
+
+---
+
+## Current software architecture
+
+Main blocks:
+
+- **Python** application for hook monitoring and call lifecycle
+- **Retell** for call registration / AI voice agent handling
+- **pjsua** from `pjproject` for SIP audio transport
+- **ALSA** for playback/capture routing
+- **systemd** for autostart on Raspberry Pi boot
+
+---
+
+## Suggested repository layout
+
+A minimal layout like this is enough:
 
 ```text
 repo/
 ├── assets/
 ├── recordings/
 │   └── .gitkeep
+├── systemd/
+│   └── bigrigio-retell.service
 ├── .env
+├── .env.example
 ├── .gitignore
+├── LICENSE
 ├── README.md
 ├── requirements.txt
-├── retell_hook.py
-├── retell_sip_test_record_udp.py
-└── systemd/
-    └── bigrigio-retell.service
+└── retell_full_duplex.py
 ```
+
+If you later rename the main Python script, update the `systemd` service and README accordingly.
 
 ---
 
-## Python requirements
+## Python dependencies
 
 Install Python dependencies from `requirements.txt`.
 
-On Raspberry Pi OS / Debian, if you are not using a virtualenv:
+On Raspberry Pi OS / Debian, if you are **not** using a virtual environment:
 
 ```bash
 pip install --break-system-packages -r requirements.txt
 ```
 
-To inspect what is currently installed:
+Useful inspection commands:
 
 ```bash
 pip list --not-required
@@ -80,50 +162,46 @@ pip freeze
 
 ## Environment variables
 
-Create a `.env` file in the repository root:
+Create a `.env` file in the repository root.
+
+Example:
 
 ```dotenv
-RETELL_API_KEY=your_retell_api_key_here
-RETELL_AGENT_ID=your_retell_agent_id_here
+RETELL_API_KEY=your_retell_api_key
+RETELL_AGENT_ID=your_retell_agent_id
 HOOK_PIN=17
 PJSUA_BIN=pjsua-raspi
+PJSUA_STUN_SERVER=stun.l.google.com:19302
+PJSUA_CAPTURE_DEV=
+PJSUA_PLAYBACK_DEV=
 ```
 
 Notes:
 
 - `RETELL_API_KEY`: Retell API key
 - `RETELL_AGENT_ID`: Retell agent identifier
-- `HOOK_PIN`: GPIO pin used for the handset hook switch
+- `HOOK_PIN`: GPIO pin used for the hook switch
 - `PJSUA_BIN`: executable name or path for `pjsua`
+- `PJSUA_STUN_SERVER`: STUN server used for one-way audio / NAT traversal scenarios
+- `PJSUA_CAPTURE_DEV`: optional explicit ALSA capture device index for `pjsua`
+- `PJSUA_PLAYBACK_DEV`: optional explicit ALSA playback device index for `pjsua`
 
-The code should load `.env` from the **current repository directory**, not from an absolute path.
+Leaving `PJSUA_CAPTURE_DEV` and `PJSUA_PLAYBACK_DEV` empty lets `pjsua` use the ALSA default device.
 
 ---
 
-## Prerequisite: build and install pjproject / pjsua
+## Build and install `pjsua`
 
-This project expects `pjsua` to be available on the Raspberry Pi Zero 2 W.
+This project expects `pjsua` to be present on the Raspberry Pi.
 
-The recommended approach is:
-
-1. clone `pjproject`
-2. compile it locally on the Raspberry Pi
-3. expose the final binary through a stable symlink such as `pjsua-raspi`
-
-### 1. Clone pjproject
-
-Example:
+### 1. Clone `pjproject`
 
 ```bash
 git clone https://github.com/pjsip/pjproject.git
 cd pjproject
 ```
 
----
-
 ### 2. Install build dependencies
-
-Typical Raspberry Pi / Debian packages:
 
 ```bash
 sudo apt update
@@ -136,13 +214,7 @@ sudo apt install -y \
   libsrtp2-dev
 ```
 
-Depending on your exact build flags and OS image, you may not need every package above, but `build-essential` and `libasound2-dev` are usually essential.
-
----
-
 ### 3. Configure and compile
-
-Minimal example:
 
 ```bash
 ./configure
@@ -150,231 +222,231 @@ make dep
 make -j$(nproc)
 ```
 
-At the end of the build, the binary is typically located at:
+The resulting binary is usually found under:
 
 ```text
-pjproject/pjsip-apps/bin/pjsua-<target-name>
+pjproject/pjsip-apps/bin/
 ```
 
-Example from this project:
+For example:
 
 ```text
 /home/bigrigio/telefono/pjproject/pjsip-apps/bin/pjsua-aarch64-unknown-linux-gnu
 ```
 
----
-
 ### 4. Create a stable symlink
 
-Instead of hardcoding the compiled binary path inside Python scripts, create a stable symlink:
+Instead of hardcoding the compiled path inside Python, expose it through a stable command name:
 
 ```bash
 sudo ln -sf /home/bigrigio/telefono/pjproject/pjsip-apps/bin/pjsua-aarch64-unknown-linux-gnu /usr/local/bin/pjsua-raspi
 ```
 
-Verify it:
+Verify:
 
 ```bash
 which pjsua-raspi
 ```
 
-Expected output:
-
-```text
-/usr/local/bin/pjsua-raspi
-```
-
-Then set in `.env`:
+Then use in `.env`:
 
 ```dotenv
 PJSUA_BIN=pjsua-raspi
 ```
 
-This makes the project more portable and avoids absolute paths inside the code.
-
 ---
 
-## ALSA configuration
+## ALSA setup
 
-### Goal
+This project currently uses the ALSA device exposed as `sndrpigooglevoi` for both playback and capture.
 
-Use:
-
-- **HiFiBerry DAC** for playback
-- **ALSA loopback** for capture when no real microphone is available
-
-### Load snd-aloop automatically at boot
+### Verify the device
 
 ```bash
-echo snd-aloop | sudo tee /etc/modules-load.d/snd-aloop.conf
-sudo modprobe snd-aloop
-```
-
-Verify capture devices:
-
-```bash
+aplay -l
 arecord -l
 ```
 
-You should see `Loopback` among the capture devices.
+Expected output should show a device similar to:
+
+- `card 1: sndrpigooglevoi`
 
 ---
 
-### Recommended `~/.asoundrc`
+## Recommended `~/.asoundrc`
+
+This is the current working setup used by the project:
 
 ```bash
 cat > ~/.asoundrc <<'ASOUNDRC'
+pcm.phone_hw {
+  type plug
+  slave.pcm "plughw:CARD=sndrpigooglevoi,DEV=0"
+}
+
+pcm.phone_capture {
+  type plug
+  slave.pcm "plughw:CARD=sndrpigooglevoi,DEV=0"
+}
+
+pcm.phone_softvol {
+  type softvol
+  slave.pcm "phone_hw"
+  control {
+    name "PhoneSoftVol"
+    card sndrpigooglevoi
+  }
+  min_dB -50.0
+  max_dB 0.0
+  resolution 256
+}
+
 pcm.!default {
   type asym
-  playback.pcm "plughw:CARD=sndrpihifiberry,DEV=0"
-  capture.pcm  "plughw:CARD=Loopback,DEV=0"
+  playback.pcm "phone_softvol"
+  capture.pcm  "phone_capture"
 }
 
 ctl.!default {
   type hw
-  card sndrpihifiberry
+  card sndrpigooglevoi
 }
 ASOUNDRC
 ```
 
-Why this matters:
-
-- after enabling `snd-aloop`, ALSA card numbering can change between boots
-- using `CARD=` names is more stable than `hw:0,0`
-- playback keeps pointing to the DAC instead of accidentally pointing to Loopback
+Then reboot the Raspberry Pi.
 
 ---
 
-## Verify audio playback
+## Test audio locally
 
-Before testing Retell, verify local playback works.
+Before testing Retell, make sure local ALSA playback and capture work.
 
-### WAV playback
-
-```bash
-aplay somefile.wav
-```
-
-### MP3 playback
+### Playback test
 
 ```bash
-mpg123 -a hw:1,0 -f 1000 assets/fallout-music.mp3
+speaker-test -D default -c 1 -r 8000 -t sine -f 1000
 ```
-
-If the DAC card index changes, prefer checking first with:
 
 ```bash
-aplay -l
+aplay -D default /usr/share/sounds/alsa/Front_Center.wav
 ```
 
-If the DAC is not card `1`, adapt the command or rely on the ALSA default device.
+### Raw hardware playback test
+
+```bash
+speaker-test -D plughw:CARD=sndrpigooglevoi,DEV=0 -c 1 -r 8000 -t sine -f 1000
+aplay -D plughw:CARD=sndrpigooglevoi,DEV=0 /usr/share/sounds/alsa/Front_Center.wav
+```
+
+If these tests work but `pjsua` audio does not, the issue is usually in ALSA routing, device selection, NAT traversal, or `pjsua` configuration.
 
 ---
 
-## Verify current Wi-Fi network
+## Output volume control
 
-Check the active Wi-Fi SSID:
+The current ALSA setup exposes a software volume control called:
 
-```bash
-nmcli -t -f ACTIVE,SSID dev wifi
-```
+- `PhoneSoftVol`
 
-Check active connection details:
+Useful commands:
 
 ```bash
-nmcli connection show --active
+amixer -D default scontrols
+amixer -D default sget PhoneSoftVol
+amixer -D default sset PhoneSoftVol 20%
+amixer -D default sset PhoneSoftVol 35%
+amixer -D default sset PhoneSoftVol 50%
 ```
 
-Activate a known Wi-Fi profile:
+This is the preferred way to adjust the phone speaker output at the Raspberry Pi / ALSA level.
 
-```bash
-sudo nmcli connection up "wifi-1"
-```
+Important note:
 
-Replace `wifi-1` with the connection profile name you want to activate.
+- player-specific volume flags such as `mpg123 -f` only affect that specific player
+- Retell / `pjsua` audio follows the ALSA device path instead
+- so for the SIP call audio path, volume should be adjusted through ALSA (`PhoneSoftVol`) or hardware gain / amplifier wiring
 
 ---
 
-## Retell SIP test script
+## Hook switch behavior
 
-The Retell SIP script should:
+Target behavior:
 
-- register a fresh Retell phone call
-- build the SIP URI
-- launch `pjsua`
-- optionally record audio into `recordings/`
-- prefer PCMU when needed for debugging
+1. lift the handset → start Retell SIP call
+2. place the handset back down → stop the call
 
-Recommended behavior:
+Current GPIO assumptions:
 
-- recordings should be written to `recordings/`
-- secrets should come from `.env`
-- `pjsua` should be resolved through `PJSUA_BIN`
+- `GPIO.setmode(GPIO.BCM)`
+- `HOOK_PIN=17` by default
+- pull-up enabled
+- `LOW` = off-hook / handset lifted
+- `HIGH` = on-hook / handset down
 
-Retell SIP reference:
+If your wiring is inverted, you may need to invert the logic in the script.
 
-- https://docs.retellai.com/deploy/custom-telephony
+---
 
-Example recording directory setup:
+## Main Python script
+
+The main script:
+
+- loads credentials from `.env`
+- monitors the hook GPIO state
+- registers a phone call with Retell
+- launches `pjsua`
+- writes recordings to `recordings/`
+- kills the SIP process when the handset goes back on-hook
+
+Current main script name:
+
+```text
+retell_full_duplex.py
+```
+
+If you later rename it to something like `retell_phone.py`, remember to update:
+
+- `systemd` service file
+- README examples
+- any local launch commands
+
+---
+
+## Example launch
+
+```bash
+python3 retell_full_duplex.py
+```
+
+Typical expected flow:
+
+- script starts and waits for hook changes
+- handset is lifted
+- Retell call is registered
+- `pjsua` places the SIP call
+- AI audio flows through the handset
+- handset is placed back down
+- call is terminated cleanly
+
+---
+
+## Recordings
+
+Local recordings are useful for debugging microphone level, routing, and one-way audio issues.
+
+Create the directory if needed:
 
 ```bash
 mkdir -p recordings
 touch recordings/.gitkeep
 ```
 
----
-
-## Hook-controlled phone behavior
-
-Target behavior:
-
-1. when the handset is lifted, the Retell demo starts
-2. when the handset is put down, the call is terminated
-3. no manual `q` inside `pjsua` should be required during normal use
-
-That means the hook monitor script is responsible for:
-
-- detecting handset state through GPIO
-- starting the Retell SIP process when the hook goes off-hook
-- terminating the process when the hook goes on-hook
-
----
-
-## GPIO notes
-
-Example configuration:
-
-- `HOOK_PIN = 17`
-- input with pull-up
-- `LOW` = handset lifted
-- `HIGH` = handset down
-
-Typical setup in Python:
-
-```python
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(HOOK_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-```
-
-Adapt if your wiring is inverted.
+Recordings should not be committed to git.
 
 ---
 
 ## Systemd autostart
-
-### Disable the previous demo service
-
-If you previously used a music demo service:
-
-```bash
-sudo systemctl disable --now bigrigio-demo.service
-```
-
-Adjust the service name if needed.
-
----
-
-### Install the new Retell hook service
 
 Example service file:
 
@@ -388,7 +460,7 @@ Wants=network-online.target
 Type=simple
 User=bigrigio
 WorkingDirectory=/home/bigrigio/telefono/repo
-ExecStart=/usr/bin/python3 /home/bigrigio/telefono/repo/retell_hook.py
+ExecStart=/usr/bin/python3 /home/bigrigio/telefono/repo/retell_full_duplex.py
 Restart=always
 RestartSec=2
 
@@ -404,7 +476,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now bigrigio-retell.service
 ```
 
-Check status:
+Check logs:
 
 ```bash
 systemctl status bigrigio-retell.service
@@ -414,8 +486,6 @@ journalctl -u bigrigio-retell.service -f
 ---
 
 ## Recommended `.gitignore`
-
-Suggested entries:
 
 ```gitignore
 __pycache__/
@@ -431,37 +501,56 @@ recordings/*.txt
 .DS_Store
 ```
 
-Keep `recordings/.gitkeep` committed so the directory exists in the repository.
+Keep `recordings/.gitkeep` committed.
 
 ---
 
-## What to check before the first commit
+## Troubleshooting notes
 
-Recommended checklist:
+A few practical notes from real-world testing on this build:
 
-- `.env` is excluded from git
-- recordings are excluded from git
-- secrets are removed from source code
-- `README.md` matches the actual pin numbers and filenames
-- systemd service points to the correct repository path
-- `requirements.txt` only contains what is really needed
-- `PJSUA_BIN` is resolved from `.env`
-- `recordings/` exists with `.gitkeep`
+- one-way audio may appear depending on NAT / home router behavior
+- in some setups, enabling STUN was necessary to get two-way audio working reliably
+- `pjsua` may work better at `8000 Hz` with `PCMU` forced
+- the local WAV recording can reveal very low microphone level even when the live AI transcript still works
+- ALSA default routing matters more than individual player settings
+- software volume may not always affect every path equally if playback bypasses the intended ALSA softvol layer
+
+Useful debugging tools:
+
+```bash
+tcpdump -ni any udp port 4000 or udp port 4001
+```
+
+```bash
+pjsua --help
+```
+
+Retell SIP debugging reference:
+
+- https://docs.retellai.com/reliability/debug-calls-pcap
 
 ---
 
-## Suggested license for this project
+## Future work
 
-If you want people to use the project freely but keep your name attached to it, a simple and practical option is the **MIT License**.
+Planned improvements:
 
-Why MIT is a good fit here:
+- rotary dial pulse decoding
+- mapping dialed numbers to actions / agents / destinations
+- better speaker output volume control consistency
+- better microphone gain and capture level tuning
+- more robust startup / recovery behavior
+- cleaner separation between hardware config and application logic
 
-- short and standard
-- widely understood
-- easy for others to adopt
-- requires keeping the copyright and license notice
+---
 
-If your goal is basically: “use it, modify it, share it, but keep my attribution”, MIT is usually the simplest choice.
+## License
+
+This project is released under the **MIT License**.
+
+Use it, modify it, and share it — but keep attribution.
+See the `LICENSE` file for details.
 
 ---
 
