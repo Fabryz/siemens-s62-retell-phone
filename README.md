@@ -4,6 +4,9 @@
 
 A retro AI phone built around a **Raspberry Pi Zero 2 W** and a restored **Siemens S62** handset/body.
 
+Full project story and build notes on Medium:
+https://medium.com/@fabryz/from-a-flea-market-siemens-s62-to-an-ai-phone-204b35eacc12
+
 The idea behind this project is simple: take a classic physical telephone, keep the tactile and mechanical charm of the original object, and connect it to a modern AI voice workflow.
 
 This particular phone was picked up at an antiques / flea market and turned into an experiment in blending **physical, analog interaction** with **digital voice AI**.
