@@ -561,3 +561,14 @@ See the `LICENSE` file for details.
 
 Created and authored by **Fabrizio Codello**.
 
+---
+
+## Support
+
+This project was built as a personal side project and documented to make this kind of retro phone / voice AI build easier for others.
+
+If you found the repository or the article useful, you can support my work here:
+
+[![Support on Ko-fi](https://img.shields.io/badge/Support-Ko--fi-ff5f5f?logo=ko-fi&logoColor=white)](https://ko-fi.com/fabryz)
+
+Thank you, it helps me keep building, documenting, and sharing projects like this.
