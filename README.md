@@ -569,6 +569,6 @@ This project was built as a personal side project and documented to make this ki
 
 If you found the repository or the article useful, you can support my work here:
 
-[![Support on Ko-fi](https://img.shields.io/badge/Support-Ko--fi-ff5f5f?logo=ko-fi&logoColor=white)](https://ko-fi.com/fabryz)
+[![Support on ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/fabryz)
 
 Thank you, it helps me keep building, documenting, and sharing projects like this.
