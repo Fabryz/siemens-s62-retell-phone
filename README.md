@@ -416,6 +416,20 @@ If you later rename it to something like `retell_phone.py`, remember to update:
 
 ---
 
+## Standalone hardware tests
+
+The repository also includes isolated test scripts to validate the hardware step by step before running the full Retell phone flow.
+
+This makes it easier to debug the build incrementally, even without enabling the full voice AI stack immediately.
+
+Current or planned standalone tests:
+
+- `tests/rotary_dial_test_polling.py` — reads digits from the rotary dial
+- `tests/hook_test.py` — verifies hook switch GPIO state
+- `tests/audio_playback_test.sh` — verifies audio output through the handset speaker
+
+---
+
 ## Example launch
 
 ```bash
