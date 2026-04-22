@@ -71,6 +71,21 @@ The exact wiring can vary depending on how the phone has been restored, but this
   - `LOW` = handset lifted
   - `HIGH` = handset down
 
+### Rotary dial
+
+Current rotary dial test wiring:
+
+- rotary common (`white`) → **GND** (**physical pin 39**)
+- rotary enable / off-normal contact (`red`) → `GPIO22` (**physical pin 15**)
+- rotary pulse contact (`brown`) → `GPIO27` (**physical pin 13**)
+- optional debounce capacitor: **100nF** between `GPIO27` and **GND**
+- `blue` wire is currently unused
+
+Notes:
+
+- the rotary dial is currently handled by the standalone test script `tests/rotary_dial_test_polling.py`
+- the dial common must be electrically isolated from the original phone circuit if it interferes with the hook switch logic
+
 ### I2S audio bus
 
 The Raspberry Pi PCM / I2S audio bus uses the usual GPIO group:
@@ -127,10 +142,19 @@ A minimal layout like this is enough:
 ```text
 repo/
 ├── assets/
+│   └── ringtone.mp3
 ├── recordings/
 │   └── .gitkeep
 ├── systemd/
 │   └── bigrigio-retell.service
+├── tests/
+│   ├── audio_playback_test.sh
+│   ├── hook_test.py
+│   ├── mic_capture_test.sh
+│   ├── ring_test.sh
+│   ├── rotary_dial_test_polling.py
+│   └── recordings/
+│       └── .gitkeep
 ├── .env
 ├── .env.example
 ├── .gitignore
@@ -344,6 +368,20 @@ aplay -D plughw:CARD=sndrpigooglevoi,DEV=0 /usr/share/sounds/alsa/Front_Center.w
 
 If these tests work but `pjsua` audio does not, the issue is usually in ALSA routing, device selection, NAT traversal, or `pjsua` configuration.
 
+### Repository test scripts
+
+The repository also includes simple standalone test scripts:
+
+```bash
+python3 tests/hook_test.py
+./tests/audio_playback_test.sh
+./tests/mic_capture_test.sh
+./tests/ring_test.sh
+python3 tests/rotary_dial_test_polling.py
+```
+
+These are useful to validate each hardware subsystem independently before testing the full Retell integration.
+
 ---
 
 ## Output volume control
@@ -369,6 +407,7 @@ Important note:
 - player-specific volume flags such as `mpg123 -f` only affect that specific player
 - Retell / `pjsua` audio follows the ALSA device path instead
 - so for the SIP call audio path, volume should be adjusted through ALSA (`PhoneSoftVol`) or hardware gain / amplifier wiring
+- The ringtone playback test also uses the ALSA default path, so `PhoneSoftVol` affects its playback level as well.
 
 ---
 
@@ -422,7 +461,7 @@ The repository also includes isolated test scripts to validate the hardware step
 
 This makes it easier to debug the build incrementally, even without enabling the full voice AI stack immediately.
 
-Current or planned standalone tests:
+Current standalone tests:
 
 - `tests/rotary_dial_test_polling.py` — reads digits from the rotary dial
 - `tests/hook_test.py` — verifies hook switch GPIO state
@@ -555,12 +594,14 @@ Retell SIP debugging reference:
 
 Planned improvements:
 
-- rotary dial pulse decoding
-- mapping dialed numbers to actions / agents / destinations
-- better speaker output volume control consistency
-- better microphone gain and capture level tuning
-- more robust startup / recovery behavior
-- cleaner separation between hardware config and application logic
+- integrate rotary dial input into the main phone flow
+- map dialed numbers to actions / agents / destinations
+- improve speaker output volume consistency across all audio paths
+- improve microphone gain and capture level tuning
+- make the hardware wiring cleaner and easier to replicate
+- add a custom PCB or more structured internal wiring for future revisions
+- improve startup / recovery behavior
+- further separate hardware tests from the main application flow
 
 ---
 
