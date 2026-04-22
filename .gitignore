@@ -20,6 +20,8 @@ env/
 recordings/*.wav
 recordings/*.mp3
 recordings/*.pcap
+tests/recordings/*
+!tests/recordings/.gitkeep
 
 # OS / editor
 .DS_Store

@@ -427,6 +427,7 @@ Current or planned standalone tests:
 - `tests/rotary_dial_test_polling.py` — reads digits from the rotary dial
 - `tests/hook_test.py` — verifies hook switch GPIO state
 - `tests/audio_playback_test.sh` — verifies audio output through the handset speaker
+- `tests/mic_capture_test.sh` — records a short sample from the handset microphone and plays it back
 
 ---
 
