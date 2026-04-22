@@ -428,6 +428,7 @@ Current or planned standalone tests:
 - `tests/hook_test.py` — verifies hook switch GPIO state
 - `tests/audio_playback_test.sh` — verifies audio output through the handset speaker
 - `tests/mic_capture_test.sh` — records a short sample from the handset microphone and plays it back
+- `tests/ring_test.sh` — plays a ringtone sample through the handset speaker
 
 ---
 
