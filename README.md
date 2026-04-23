@@ -11,7 +11,7 @@ The idea behind this project is simple: take a classic physical telephone, keep 
 
 This particular phone was picked up at an antiques / flea market and turned into an experiment in blending **physical, analog interaction** with **digital voice AI**.
 
-For people outside Italy: the **Siemens S62**, commonly nicknamed **"Bigrigio"**, is one of the most recognizable Italian desk telephones of the late SIP era. The model was introduced in **1962**, was designed by **Lino Saltini**, and became the standard rented telephone supplied by **SIP** across Italy for many years. The nickname "Bigrigio" comes from its characteristic two-tone gray color scheme. Later, newer models such as **Pulsar** gradually replaced it, but the S62 remained iconic. 
+For people outside Italy: the **Siemens S62**, commonly nicknamed **"Bigrigio"**, is one of the most recognizable Italian desk telephones of the late SIP era. The model was introduced in **1962**, was designed by **Lino Saltini**, and became the standard rented telephone supplied by **SIP** across Italy for many years. The nickname "Bigrigio" comes from its characteristic two-tone gray color scheme. Later, newer models such as **Pulsar** gradually replaced it, but the S62 remained iconic.
 
 This repository documents the Raspberry Pi side of that build: hook detection, audio routing, SIP calling with `pjsua`, and Retell integration.
 
@@ -60,31 +60,46 @@ In the current working setup documented here, the project uses the ALSA device e
 
 - `sndrpigooglevoi`
 
+---
+
+## Wiring diagram
+
+![Wiring diagram](wiring-diagram.png)
+
+---
+
 ## Wiring notes
 
-The exact wiring can vary depending on how the phone has been restored, but this project currently assumes a Raspberry Pi I2S audio setup plus a GPIO hook switch.
+The exact wiring can vary depending on how the phone has been restored, but this project currently assumes a Raspberry Pi I2S audio setup plus GPIO-based hook and rotary dial handling.
 
 ### Hook switch
 
-- Hook switch → `GPIO17` (**physical pin 11**)
-- Logic used in software:
-  - `LOW` = handset lifted
-  - `HIGH` = handset down
+Current hook switch wiring:
+
+- phone terminal `G1` → `GPIO17` (**physical pin 11**)
+- phone terminal `G` → **GND** (**physical pin 6**)
+
+Logic used in software:
+
+- `LOW` = handset lifted
+- `HIGH` = handset down
 
 ### Rotary dial
 
 Current rotary dial test wiring:
 
-- rotary common (`white`) → **GND** (**physical pin 39**)
+- rotary common wire (`white`) → **GND** (**physical pin 39**)
 - rotary enable / off-normal contact (`red`) → `GPIO22` (**physical pin 15**)
-- rotary pulse contact (`brown`) → `GPIO27` (**physical pin 13**)
-- optional debounce capacitor: **100nF** between `GPIO27` and **GND**
+- rotary pulse contact (`green`) → `GPIO27` (**physical pin 13**)
 - `blue` wire is currently unused
+- optional debounce capacitor: **100nF** between `GPIO27` and **GND**
 
 Notes:
 
 - the rotary dial is currently handled by the standalone test script `tests/rotary_dial_test_polling.py`
-- the dial common must be electrically isolated from the original phone circuit if it interferes with the hook switch logic
+- the rotary common wire must be electrically isolated from the original phone circuit if it interferes with the hook switch logic
+- in particular, the **white rotary wire must not be connected to phone terminal `1`**, otherwise it can interfere with the hook switch behavior
+- the capacitor is not placed in series: it is connected between the rotary pulse line and ground
 
 ### I2S audio bus
 
@@ -97,25 +112,33 @@ The Raspberry Pi PCM / I2S audio bus uses the usual GPIO group:
 
 ### INMP441 microphone
 
-Typical connection:
+Current wiring:
 
-- `VDD` → **3.3V** (**physical pin 1** or **17**)
-- `GND` → any ground pin
-- `SCK` → `GPIO18` (**pin 12**)
-- `WS` / `LRCL` → `GPIO19` (**pin 35**)
-- `SD` → `GPIO20` (**pin 38**)
+- `VDD` → **3.3V** (**physical pin 1**)
+- `GND` → **GND** (**physical pin 14**)
+- `SD` → `GPIO20` (**physical pin 38**)
+- `L/R` → **GND** (**physical pin 20**)
+- `WS` → `GPIO19` (**physical pin 35**)
+- `SCK` → `GPIO18` (**physical pin 12**)
 
 ### MAX98357A amplifier
 
-Typical connection:
+Current wiring:
 
-- `VIN` → **5V** (**physical pin 2** or **4**)
-- `GND` → any ground pin
-- `BCLK` → `GPIO18` (**pin 12**)
-- `LRC` / `LRCLK` → `GPIO19` (**pin 35**)
-- `DIN` → `GPIO21` (**pin 40**)
+- `VIN` → **5V** (**physical pin 2**)
+- `GND` → **GND** (**physical pin 9**)
+- `BCLK` → `GPIO18` (**physical pin 12**)
+- `LRC` / `LRCLK` → `GPIO19` (**physical pin 35**)
+- `DIN` → `GPIO21` (**physical pin 40**)
+- `SD` → `GPIO16` (**physical pin 36**)
+- `GAIN` → **5V** (**physical pin 4**)
 
-The speaker inside the Siemens S62 is then connected to the amplifier output.
+Speaker wiring:
+
+- amplifier `+` → phone terminal `M/R`
+- amplifier `-` → phone terminal `R`
+
+Note: in this build, the most practical playback volume adjustments are still done through ALSA `PhoneSoftVol`.
 
 ### Important note
 
@@ -160,6 +183,8 @@ repo/
 ├── .gitignore
 ├── LICENSE
 ├── README.md
+├── bigrigio.jpg
+├── wiring-diagram.png
 ├── requirements.txt
 └── retell_full_duplex.py
 ```
@@ -374,10 +399,10 @@ The repository also includes simple standalone test scripts:
 
 ```bash
 python3 tests/hook_test.py
-./tests/audio_playback_test.sh
-./tests/mic_capture_test.sh
-./tests/ring_test.sh
 python3 tests/rotary_dial_test_polling.py
+./tests/audio_playback_test.sh
+./tests/ring_test.sh
+./tests/mic_capture_test.sh
 ```
 
 These are useful to validate each hardware subsystem independently before testing the full Retell integration.
@@ -398,6 +423,8 @@ amixer -D default sget PhoneSoftVol
 amixer -D default sset PhoneSoftVol 20%
 amixer -D default sset PhoneSoftVol 35%
 amixer -D default sset PhoneSoftVol 50%
+amixer -D default sset PhoneSoftVol 80%
+amixer -D default sset PhoneSoftVol 100%
 ```
 
 This is the preferred way to adjust the phone speaker output at the Raspberry Pi / ALSA level.
@@ -407,7 +434,7 @@ Important note:
 - player-specific volume flags such as `mpg123 -f` only affect that specific player
 - Retell / `pjsua` audio follows the ALSA device path instead
 - so for the SIP call audio path, volume should be adjusted through ALSA (`PhoneSoftVol`) or hardware gain / amplifier wiring
-- The ringtone playback test also uses the ALSA default path, so `PhoneSoftVol` affects its playback level as well.
+- the ringtone playback test also uses the ALSA default path, so `PhoneSoftVol` affects its playback level as well
 
 ---
 
@@ -463,11 +490,11 @@ This makes it easier to debug the build incrementally, even without enabling the
 
 Current standalone tests:
 
-- `tests/rotary_dial_test_polling.py` — reads digits from the rotary dial
 - `tests/hook_test.py` — verifies hook switch GPIO state
-- `tests/audio_playback_test.sh` — verifies audio output through the handset speaker
-- `tests/mic_capture_test.sh` — records a short sample from the handset microphone and plays it back
+- `tests/rotary_dial_test_polling.py` — reads digits from the rotary dial
+- `tests/audio_playback_test.sh` — verifies audio playback through the handset speaker
 - `tests/ring_test.sh` — plays a ringtone sample through the handset speaker
+- `tests/mic_capture_test.sh` — records a short sample from the handset microphone and plays it back
 
 ---
 
@@ -498,6 +525,8 @@ Create the directory if needed:
 ```bash
 mkdir -p recordings
 touch recordings/.gitkeep
+mkdir -p tests/recordings
+touch tests/recordings/.gitkeep
 ```
 
 Recordings should not be committed to git.
@@ -555,11 +584,13 @@ recordings/*.wav
 recordings/*.mp3
 recordings/*.pcap
 recordings/*.txt
+tests/recordings/*
+!tests/recordings/.gitkeep
 *.log
 .DS_Store
 ```
 
-Keep `recordings/.gitkeep` committed.
+Keep `recordings/.gitkeep` and `tests/recordings/.gitkeep` committed.
 
 ---
 
@@ -573,6 +604,7 @@ A few practical notes from real-world testing on this build:
 - the local WAV recording can reveal very low microphone level even when the live AI transcript still works
 - ALSA default routing matters more than individual player settings
 - software volume may not always affect every path equally if playback bypasses the intended ALSA softvol layer
+- if the hook switch stops behaving correctly after adding rotary dial wiring, verify that the rotary common wire is isolated from the original phone common and is not tied back to phone terminal `1`
 
 Useful debugging tools:
 
@@ -598,7 +630,7 @@ Planned improvements:
 - map dialed numbers to actions / agents / destinations
 - improve speaker output volume consistency across all audio paths
 - improve microphone gain and capture level tuning
-- make the hardware wiring cleaner and easier to replicate
+- make the internal wiring cleaner and easier to replicate
 - add a custom PCB or more structured internal wiring for future revisions
 - improve startup / recovery behavior
 - further separate hardware tests from the main application flow
